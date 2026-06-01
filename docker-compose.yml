@@ -1,0 +1,303 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - career-connect-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    networks:
+      - career-connect-net
+
+  mysql-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: career_connect_db
+    ports:
+      - "3307:3306"
+    networks:
+      - career-connect-net
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  mongo-db:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    networks:
+      - career-connect-net
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - career-connect-net
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - career-connect-net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - career-connect-net
+    depends_on:
+      - prometheus
+
+  config-server:
+    build:
+      context: ./backend
+      dockerfile: ./config-server/Dockerfile
+    ports:
+      - "8888:8888"
+    networks:
+      - career-connect-net
+
+  discovery-server:
+    build:
+      context: ./backend
+      dockerfile: ./discovery-server/Dockerfile
+    ports:
+      - "8761:8761"
+    networks:
+      - career-connect-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: ./api-gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - career-connect-net
+    depends_on:
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: ./auth-service/Dockerfile
+    ports:
+      - "8081:8081"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+
+  job-service:
+    build:
+      context: ./backend
+      dockerfile: ./job-service/Dockerfile
+    ports:
+      - "8082:8082"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  profile-service:
+    build:
+      context: ./backend
+      dockerfile: ./profile-service/Dockerfile
+    ports:
+      - "8083:8083"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATA_MONGODB_URI=mongodb://admin:password@mongo-db:27017/career_connect_profiles?authSource=admin
+
+  application-service:
+    build:
+      context: ./backend
+      dockerfile: ./application-service/Dockerfile
+    ports:
+      - "8084:8084"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+
+  company-service:
+    build:
+      context: ./backend
+      dockerfile: ./company-service/Dockerfile
+    ports:
+      - "8085:8085"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+
+  ai-cv-service:
+    build:
+      context: ./backend
+      dockerfile: ./ai-cv-service/Dockerfile
+    ports:
+      - "8086:8086"
+    networks:
+      - career-connect-net
+    depends_on:
+      - mysql-db
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+
+  recommendation-service:
+    build:
+      context: ./backend
+      dockerfile: ./recommendation-service/Dockerfile
+    ports:
+      - "8087:8087"
+    networks:
+      - career-connect-net
+    depends_on:
+      - kafka
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: ./notification-service/Dockerfile
+    ports:
+      - "8091:8091"
+    networks:
+      - career-connect-net
+    depends_on:
+      - kafka
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  chat-service:
+    build:
+      context: ./backend
+      dockerfile: ./chat-service/Dockerfile
+    ports:
+      - "8088:8088"
+    networks:
+      - career-connect-net
+    depends_on:
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+
+  video-interview-service:
+    build:
+      context: ./backend
+      dockerfile: ./video-interview-service/Dockerfile
+    ports:
+      - "8089:8089"
+    networks:
+      - career-connect-net
+    depends_on:
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+
+  admin-service:
+    build:
+      context: ./backend
+      dockerfile: ./admin-service/Dockerfile
+    ports:
+      - "8090:8090"
+    networks:
+      - career-connect-net
+    depends_on:
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+
+networks:
+  career-connect-net:
+    driver: bridge
+
+volumes:
+  mysql-data: {}
+  mongo-data: {}

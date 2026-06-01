@@ -1,0 +1,228 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: careerconnect-config
+data:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server-svc:8761/eureka/
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-svc:9092
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: careerconnect-secrets
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: root
+  JWT_SECRET: change-me-in-production
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cv-storage-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-cv-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: ai-cv
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: ai-cv
+    spec:
+      containers:
+        - name: ai-cv-service
+          image: careerconnect/ai-cv-service:latest
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: careerconnect-config
+          volumeMounts:
+            - name: cv-storage
+              mountPath: /data/cv
+      volumes:
+        - name: cv-storage
+          persistentVolumeClaim:
+            claimName: cv-storage-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: recommendation
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: recommendation
+    spec:
+      containers:
+        - name: recommendation-service
+          image: careerconnect/recommendation-service:latest
+          ports:
+            - containerPort: 8087
+          envFrom:
+            - configMapRef:
+                name: careerconnect-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: chat
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: chat
+    spec:
+      containers:
+        - name: chat-service
+          image: careerconnect/chat-service:latest
+          ports:
+            - containerPort: 8088
+          envFrom:
+            - configMapRef:
+                name: careerconnect-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-interview-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: video-interview
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: video-interview
+    spec:
+      containers:
+        - name: video-interview-service
+          image: careerconnect/video-interview-service:latest
+          ports:
+            - containerPort: 8089
+          envFrom:
+            - configMapRef:
+                name: careerconnect-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: admin
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: admin
+    spec:
+      containers:
+        - name: admin-service
+          image: careerconnect/admin-service:latest
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - configMapRef:
+                name: careerconnect-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-cv-service-svc
+spec:
+  selector:
+    service: ai-cv
+  ports:
+    - port: 8086
+      targetPort: 8086
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-service-svc
+spec:
+  selector:
+    service: recommendation
+  ports:
+    - port: 8087
+      targetPort: 8087
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-service-svc
+spec:
+  selector:
+    service: chat
+  ports:
+    - port: 8088
+      targetPort: 8088
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-interview-service-svc
+spec:
+  selector:
+    service: video-interview
+  ports:
+    - port: 8089
+      targetPort: 8089
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service-svc
+spec:
+  selector:
+    service: admin
+  ports:
+    - port: 8090
+      targetPort: 8090
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: job-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: job-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
