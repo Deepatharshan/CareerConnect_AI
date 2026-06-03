@@ -10,7 +10,7 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
-# Placeholder for LLM keys
 ai:
-  provider: dummy-llm
-  api-key: your-api-key-here
+  gemini:
+    api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+    api-key: ${GEMINI_API_KEY:""}

@@ -32,6 +32,10 @@ public class Job {
 
     private Integer experienceMin;
     
+    private String companyName;
+    private String companyLogoUrl;
+    private String posterUrl;
+    
     @Enumerated(EnumType.STRING)
     private JobType jobType;
     
@@ -87,4 +91,13 @@ public class Job {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    
+    public String getCompanyLogoUrl() { return companyLogoUrl; }
+    public void setCompanyLogoUrl(String companyLogoUrl) { this.companyLogoUrl = companyLogoUrl; }
+    
+    public String getPosterUrl() { return posterUrl; }
+    public void setPosterUrl(String posterUrl) { this.posterUrl = posterUrl; }
 }

@@ -58,6 +58,33 @@ export const getJobById = async (jobId: string) => {
   return response.json();
 };
 
+export const updateJob = async (jobId: string, jobData: any, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+    method: 'PUT',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(jobData),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update job');
+  }
+  return response.json();
+};
+
+export const deleteJob = async (jobId: string, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete job');
+  }
+};
+
 // Company Endpoints
 export const getCompanyJobs = async (companyId: string, token: string) => {
   const response = await fetch(`${API_BASE_URL}/jobs/company/${companyId}`, {
@@ -70,16 +97,56 @@ export const getCompanyJobs = async (companyId: string, token: string) => {
   }
   return response.json();
 };
+export const getCompanyByOwner = async (ownerId: string, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/companies/owner/${ownerId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch company details');
+  return response.json();
+};
 
+export const updateCompany = async (company: any, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/companies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(company)
+  });
+  if (!response.ok) throw new Error('Failed to update company');
+  return response.json();
+};
+
+export const uploadCompanyLogo = async (file: File, token: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE_URL}/companies/uploads/logo`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+  if (!response.ok) throw new Error('Failed to upload logo');
+  return response.text();
+};
+
+export const uploadJobPoster = async (file: File, token: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE_URL}/jobs/uploads/poster`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+  if (!response.ok) throw new Error('Failed to upload poster');
+  return response.text();
+};
 // Application Endpoints
-export const applyForJob = async (jobId: string, candidateId: string, token: string) => {
+export const applyForJob = async (jobId: string, candidateId: string, token: string, details: Record<string, unknown> = {}) => {
   const response = await fetch(`${API_BASE_URL}/applications/apply/${jobId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({ candidateId })
+    body: JSON.stringify({ candidateId, ...details })
   });
   if (!response.ok) {
     throw new Error('Failed to apply for job');
@@ -136,9 +203,81 @@ export const analyzeCv = async (cvText: string, targetJobId?: string) => {
   return response.json();
 };
 
+export const analyzeCvFile = async (file: File, targetJobId?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (targetJobId) {
+    formData.append('targetJobId', targetJobId);
+  }
+  const response = await fetch(`${API_BASE_URL}/ai/cv/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) throw new Error('Failed to analyze CV file');
+  return response.json();
+};
+
 export const getRecommendations = async (userId: string, skills = '') => {
   const response = await fetch(`${API_BASE_URL}/recommendations/jobs/${userId}?skills=${encodeURIComponent(skills)}`);
   if (!response.ok) throw new Error('Failed to fetch recommendations');
+  return response.json();
+};
+
+export const getProfile = async (userId: string, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/profiles/${userId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Failed to fetch profile');
+  return response.json();
+};
+
+export const saveProfile = async (profile: Record<string, unknown>, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/profiles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(profile),
+  });
+  if (!response.ok) throw new Error('Failed to save profile');
+  return response.json();
+};
+
+export const uploadCv = async (userId: string, file: File, token: string, name?: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (name) formData.append('name', name);
+
+  const response = await fetch(`${API_BASE_URL}/profiles/${userId}/cv`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData,
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(errText || 'Failed to upload CV');
+  }
+  return response.json();
+};
+
+export const deleteCv = async (userId: string, cvId: string, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/profiles/${userId}/cv/${cvId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Failed to delete CV');
+  return response.json();
+};
+
+export const uploadProfilePicture = async (userId: string, file: File, token: string) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/profiles/${userId}/picture`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData,
+  });
+  if (!response.ok) throw new Error('Failed to upload profile picture');
   return response.json();
 };
 

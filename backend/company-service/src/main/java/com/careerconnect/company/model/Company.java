@@ -23,6 +23,19 @@ public class Company {
     private String logoUrl;
     private String industry;
     private String location;
+    private String phone;
+    private String email;
+    private String ceoName;
+    private String hrName;
+    
+    @Column(columnDefinition = "TEXT")
+    private String branches;
+    
+    @Column(columnDefinition = "TEXT")
+    private String staffNames;
+    
+    @Column(columnDefinition = "TEXT")
+    private String socialMediaLinks;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -47,4 +60,25 @@ public class Company {
     
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+    
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    
+    public String getCeoName() { return ceoName; }
+    public void setCeoName(String ceoName) { this.ceoName = ceoName; }
+    
+    public String getHrName() { return hrName; }
+    public void setHrName(String hrName) { this.hrName = hrName; }
+    
+    public String getBranches() { return branches; }
+    public void setBranches(String branches) { this.branches = branches; }
+    
+    public String getStaffNames() { return staffNames; }
+    public void setStaffNames(String staffNames) { this.staffNames = staffNames; }
+    
+    public String getSocialMediaLinks() { return socialMediaLinks; }
+    public void setSocialMediaLinks(String socialMediaLinks) { this.socialMediaLinks = socialMediaLinks; }
 }

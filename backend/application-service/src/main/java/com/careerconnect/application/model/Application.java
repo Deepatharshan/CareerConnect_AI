@@ -17,9 +17,22 @@ public class Application {
     @Column(nullable = false)
     private String candidateId;
 
+    private String applicantName;
+    private String applicantEmail;
+    private String applicantPhone;
+    @Column(length = 1000)
+    private String applicantAddress;
+    private String applicantCurrentStatus;
+    private Integer expectedSalaryMin;
+    private Integer expectedSalaryMax;
+
+    @Column(length = 1500)
+    private String applicantDescription;
+
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.APPLIED;
 
+    @Column(length = 1000)
     private String resumeUrlUsed;
 
     private boolean savedJob;
@@ -50,6 +63,30 @@ public class Application {
 
     public String getCandidateId() { return candidateId; }
     public void setCandidateId(String candidateId) { this.candidateId = candidateId; }
+
+    public String getApplicantName() { return applicantName; }
+    public void setApplicantName(String applicantName) { this.applicantName = applicantName; }
+
+    public String getApplicantEmail() { return applicantEmail; }
+    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
+
+    public String getApplicantPhone() { return applicantPhone; }
+    public void setApplicantPhone(String applicantPhone) { this.applicantPhone = applicantPhone; }
+
+    public String getApplicantAddress() { return applicantAddress; }
+    public void setApplicantAddress(String applicantAddress) { this.applicantAddress = applicantAddress; }
+
+    public String getApplicantCurrentStatus() { return applicantCurrentStatus; }
+    public void setApplicantCurrentStatus(String applicantCurrentStatus) { this.applicantCurrentStatus = applicantCurrentStatus; }
+
+    public Integer getExpectedSalaryMin() { return expectedSalaryMin; }
+    public void setExpectedSalaryMin(Integer expectedSalaryMin) { this.expectedSalaryMin = expectedSalaryMin; }
+
+    public Integer getExpectedSalaryMax() { return expectedSalaryMax; }
+    public void setExpectedSalaryMax(Integer expectedSalaryMax) { this.expectedSalaryMax = expectedSalaryMax; }
+
+    public String getApplicantDescription() { return applicantDescription; }
+    public void setApplicantDescription(String applicantDescription) { this.applicantDescription = applicantDescription; }
 
     public ApplicationStatus getStatus() { return status; }
     public void setStatus(ApplicationStatus status) { this.status = status; }

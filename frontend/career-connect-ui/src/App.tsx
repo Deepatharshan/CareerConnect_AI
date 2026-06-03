@@ -11,6 +11,8 @@ import AiCareerStudio from './pages/AiCareerStudio';
 import AdminConsole from './pages/AdminConsole';
 import { useAuth } from './context/AuthContext';
 
+import { useScrollReveal } from './hooks/useScrollReveal';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
   const { isAuthenticated, user } = useAuth();
@@ -22,6 +24,8 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode;
 };
 
 function App() {
+  useScrollReveal();
+
   return (
     <Router>
       <Navbar />

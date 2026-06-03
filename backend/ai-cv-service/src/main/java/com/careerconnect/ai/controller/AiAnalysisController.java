@@ -5,6 +5,9 @@ import com.careerconnect.ai.service.LlmAnalysisService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+
 import java.util.Map;
 
 @RestController
@@ -29,8 +32,20 @@ public class AiAnalysisController {
     @PostMapping("/cv/upload")
     public ResponseEntity<CvAnalysisResult> uploadAndAnalyze(@RequestParam("file") MultipartFile file,
                                                              @RequestParam(required = false) String targetJobId) {
-        CvAnalysisResult result = llmAnalysisService.analyzeCvAgainstJob(file.getOriginalFilename(), targetJobId);
-        return ResponseEntity.ok(result);
+        try {
+            String extractedText = extractTextFromPdf(file);
+            CvAnalysisResult result = llmAnalysisService.analyzeCvAgainstJob(extractedText, targetJobId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    private String extractTextFromPdf(MultipartFile file) throws Exception {
+        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return stripper.getText(document);
+        }
     }
     
     @GetMapping("/recommend/{userId}")

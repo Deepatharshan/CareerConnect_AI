@@ -146,6 +146,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    volumes:
+      - job-uploads:/app/uploads
 
   profile-service:
     build:
@@ -165,6 +167,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
       - SPRING_DATA_MONGODB_URI=mongodb://admin:password@mongo-db:27017/career_connect_profiles?authSource=admin
+    volumes:
+      - profile-uploads:/app/uploads
 
   application-service:
     build:
@@ -201,6 +205,8 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
+    volumes:
+      - company-uploads:/app/uploads
 
   ai-cv-service:
     build:
@@ -219,6 +225,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/career_connect_db
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
   recommendation-service:
     build:
@@ -301,3 +308,6 @@ networks:
 volumes:
   mysql-data: {}
   mongo-data: {}
+  profile-uploads: {}
+  company-uploads: {}
+  job-uploads: {}
