@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, PlusCircle, Briefcase, Users, TrendingUp, CheckCircle, X, DollarSign, MapPin, FileText, Eye, Download, Mail, Phone, Home, Edit2, Trash2 } from 'lucide-react';
+import { Building2, PlusCircle, Briefcase, Users, TrendingUp, CheckCircle, X, DollarSign, MapPin, FileText, Eye, Download, Mail, Phone, Home, Edit2, Trash2, Clock, ChevronRight, LayoutDashboard, UserRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL, getCompanyJobs, getJobApplications, getCompanyByOwner, uploadJobPoster, updateJob, deleteJob, updateApplicationStatus, deleteApplication } from '../api';
@@ -34,7 +34,8 @@ const EmployerDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applicants' | 'profile'>('overview');
+  const [previewJob, setPreviewJob] = useState<any>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
@@ -227,60 +228,68 @@ const EmployerDashboard = () => {
   const shortlistedCount = applicants.filter(a => a.status === 'SHORTLISTED' || a.status === 'INTERVIEW_SCHEDULED').length;
 
   return (
-    <div className="min-h-screen pt-20 pb-20">
-      {/* Header Banner */}
-      <div className="bg-surface-container-low/30 py-10 px-4 border-b border-white/5">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-surface border border-white/10 rounded-2xl flex items-center justify-center">
-              <Building2 className="w-7 h-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-on-surface">Employer Dashboard</h1>
-              <p className="text-on-surface-variant text-sm mt-0.5">Welcome back, {user?.email?.split('@')[0]}</p>
-            </div>
+    <div className="min-h-screen bg-surface pt-20 flex">
+      {/* Sidebar Navigation */}
+      <aside className="w-64 border-r border-white/10 hidden md:flex flex-col bg-surface-dim/30 sticky top-20 h-[calc(100vh-5rem)]">
+        <div className="p-6">
+          <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center mb-4">
+            <Building2 className="w-6 h-6 text-primary" />
           </div>
-          <button
-            id="post-job-modal-btn"
-            onClick={openNewJobModal}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-semibold rounded-xl hover:scale-105 transition-transform duration-300 hover:shadow-[0_0_15px_rgba(137,206,255,0.4)]"
-          >
-            <PlusCircle className="w-5 h-5" />
-            Post a New Job
-          </button>
+          <h2 className="font-bold text-on-surface truncate">{user?.email?.split('@')[0]}</h2>
+          <p className="text-xs text-on-surface-variant">Employer</p>
         </div>
         
-        {/* Tabs */}
-        <div className="max-w-6xl mx-auto mt-6 flex items-center gap-2">
-          <button 
-            onClick={() => setActiveTab('overview')} 
-            className={`px-5 py-2.5 rounded-t-xl font-semibold text-sm transition-colors ${activeTab === 'overview' ? 'bg-surface text-primary border-t border-x border-white/10' : 'bg-surface-container/50 text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}
-          >
-            Dashboard Overview
+        <nav className="flex-1 px-4 space-y-1">
+          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'overview' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'}`}>
+            <LayoutDashboard className="w-4 h-4" /> Overview
           </button>
-          <button 
-            onClick={() => setActiveTab('profile')} 
-            className={`px-5 py-2.5 rounded-t-xl font-semibold text-sm transition-colors ${activeTab === 'profile' ? 'bg-surface text-primary border-t border-x border-white/10' : 'bg-surface-container/50 text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}
-          >
-            Company Profile
+          <button onClick={() => setActiveTab('jobs')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'jobs' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'}`}>
+            <Briefcase className="w-4 h-4" /> Job Listings
+          </button>
+          <button onClick={() => setActiveTab('applicants')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'applicants' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'}`}>
+            <Users className="w-4 h-4" /> Applicants
+          </button>
+          <button onClick={() => setActiveTab('profile')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'profile' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-white/5 hover:text-on-surface'}`}>
+            <Building2 className="w-4 h-4" /> Company Profile
+          </button>
+        </nav>
+        
+        <div className="p-4 border-t border-white/10">
+          <button onClick={openNewJobModal} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary font-semibold rounded-xl hover:scale-105 transition-transform duration-300 shadow-[0_0_15px_rgba(137,206,255,0.4)]">
+            <PlusCircle className="w-4 h-4" /> Post a Job
           </button>
         </div>
-      </div>
+      </aside>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        {activeTab === 'profile' ? (
-          <CompanyProfile />
-        ) : (
-          <>
-            {/* Success Banner */}
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto h-[calc(100vh-5rem)] no-scrollbar">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 pb-24">
+          
+          {/* Mobile Header Tabs */}
+          <div className="md:hidden flex overflow-x-auto gap-2 mb-8 pb-2 no-scrollbar border-b border-white/5">
+             <button onClick={() => setActiveTab('overview')} className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'overview' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant'}`}>Overview</button>
+             <button onClick={() => setActiveTab('jobs')} className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'jobs' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant'}`}>Jobs</button>
+             <button onClick={() => setActiveTab('applicants')} className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'applicants' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant'}`}>Applicants</button>
+             <button onClick={() => setActiveTab('profile')} className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'profile' ? 'bg-primary/10 text-primary' : 'text-on-surface-variant'}`}>Profile</button>
+             <button onClick={openNewJobModal} className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary ml-auto flex items-center"><PlusCircle className="w-4 h-4 inline-block" /></button>
+          </div>
+
+        {/* Success Banner */}
         {success && (
-          <div className="flex items-center gap-3 bg-green-400/10 border border-green-400/20 text-green-400 rounded-2xl px-5 py-4">
+          <div className="flex items-center gap-3 bg-green-400/10 border border-green-400/20 text-green-400 rounded-2xl px-5 py-4 mb-6">
             <CheckCircle className="w-5 h-5 shrink-0" />
             <p className="text-sm font-medium">{success}</p>
             <button onClick={() => setSuccess('')} className="ml-auto text-green-400/60 hover:text-green-400"><X className="w-4 h-4" /></button>
           </div>
         )}
 
+        {/* PROFILE TAB */}
+        {activeTab === 'profile' && <CompanyProfile />}
+
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold text-on-surface mb-2">Dashboard Overview</h2>
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card rounded-2xl p-5 flex items-center gap-4">
@@ -301,9 +310,13 @@ const EmployerDashboard = () => {
           </div>
         </div>
 
-        {/* Your Active Job Listings */}
-        <div>
-          <div className="flex items-center justify-between mb-6 mt-12">
+          </div>
+        )}
+
+        {/* JOBS TAB */}
+        {activeTab === 'jobs' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-on-surface">Your Active Job Listings</h2>
           </div>
           
@@ -336,6 +349,9 @@ const EmployerDashboard = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button onClick={() => setPreviewJob(job)} className="p-2 bg-surface border border-white/10 rounded-lg hover:text-secondary hover:border-secondary/50 transition-colors" title="Preview Job">
+                        <Eye className="w-4 h-4" />
+                      </button>
                       <button onClick={() => handleEditJob(job)} className="p-2 bg-surface border border-white/10 rounded-lg hover:text-primary hover:border-primary/50 transition-colors" title="Edit Job">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -364,11 +380,12 @@ const EmployerDashboard = () => {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Recent Applicants - Card View */}
-        <div>
-          <div className="flex items-center justify-between mb-6 mt-12">
+          </div>
+        )}
+        {/* APPLICANTS TAB */}
+        {activeTab === 'applicants' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-on-surface">Recent Applications</h2>
             <span className="text-xs text-primary bg-primary/10 px-3 py-1 rounded-lg border border-primary/20">Real-time</span>
           </div>
@@ -524,10 +541,83 @@ const EmployerDashboard = () => {
               })}
             </div>
           )}
-        </div>
-        </>
+          </div>
         )}
-      </div>
+        </div>
+      </main>
+
+      {/* Preview Job Modal */}
+      {previewJob && (
+        <div className="fixed inset-0 bg-surface-dim/80 backdrop-blur-md z-50 flex items-center justify-center px-4 py-6">
+          <div className="glass-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar relative animate-slide-up">
+            <button onClick={() => setPreviewJob(null)} className="absolute top-4 right-4 p-2 rounded-xl hover:bg-white/5 text-on-surface-variant hover:text-primary transition-colors z-10 bg-surface/50 backdrop-blur-md">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 text-sm text-primary font-semibold mb-4 bg-primary/10 w-fit px-3 py-1.5 rounded-lg border border-primary/20">
+                <Eye className="w-4 h-4" /> Preview: Job Seeker View
+              </div>
+              
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-surface border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                    {previewJob.companyLogoUrl ? (
+                      <img src={previewJob.companyLogoUrl.startsWith('http') ? previewJob.companyLogoUrl : `${API_BASE_URL.replace('/api/v1', '')}${previewJob.companyLogoUrl}`} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 className="w-8 h-8 text-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-on-surface">{previewJob.title}</h2>
+                    <p className="text-on-surface-variant text-base mt-1">{previewJob.companyName || 'Company Name Pending'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-white/5 text-sm font-medium text-on-surface-variant">
+                  <MapPin className="w-4 h-4" /> {previewJob.location}
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-white/5 text-sm font-medium text-on-surface-variant">
+                  <Briefcase className="w-4 h-4" /> {previewJob.jobType?.replace('_', ' ')}
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-white/5 text-sm font-medium text-on-surface-variant">
+                  <DollarSign className="w-4 h-4" /> {formatExpectedSalary(previewJob.salaryMin, previewJob.salaryMax)}
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-white/5 text-sm font-medium text-on-surface-variant">
+                  <Clock className="w-4 h-4" />
+                  {new Date(previewJob.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+
+              {previewJob.posterUrl && (
+                <div className="mt-6 w-full max-h-[600px] bg-surface-container rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+                  <img src={previewJob.posterUrl.startsWith('http') ? previewJob.posterUrl : `${API_BASE_URL.replace('/api/v1', '')}${previewJob.posterUrl}`} alt="Job Poster" className="w-full h-full object-contain max-h-[600px]" />
+                </div>
+              )}
+
+              <div className="mt-6">
+                <h3 className="text-lg font-bold text-on-surface mb-3">Job Description</h3>
+                <p className="text-base text-on-surface-variant leading-relaxed whitespace-pre-wrap">{previewJob.description}</p>
+              </div>
+
+              {previewJob.requirements && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold text-on-surface mb-3">Requirements</h3>
+                  <p className="text-base text-on-surface-variant leading-relaxed whitespace-pre-wrap">{previewJob.requirements}</p>
+                </div>
+              )}
+
+              <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">
+                <button disabled className="flex items-center gap-2 px-6 py-3 text-sm font-bold text-on-primary bg-primary/50 cursor-not-allowed rounded-xl">
+                  Apply Now (Mock) <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Post Job Modal */}
       {showModal && (

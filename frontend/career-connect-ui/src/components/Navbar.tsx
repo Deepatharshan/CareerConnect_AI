@@ -30,9 +30,11 @@ const Navbar = () => {
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-8">
-          <Link to="/jobs" className={`font-body-md text-body-md font-medium transition-all duration-300 ${isActive('/jobs') ? 'text-primary border-b-2 border-primary pb-1 font-bold' : 'text-on-surface-variant hover:text-primary'}`}>
-            Find Jobs
-          </Link>
+          {user?.role !== 'EMPLOYER' && (
+            <Link to="/jobs" className={`font-body-md text-body-md font-medium transition-all duration-300 ${isActive('/jobs') ? 'text-primary border-b-2 border-primary pb-1 font-bold' : 'text-on-surface-variant hover:text-primary'}`}>
+              Find Jobs
+            </Link>
+          )}
           {isAuthenticated && user?.role === 'EMPLOYER' && (
             <Link to="/dashboard" className={`font-body-md text-body-md font-medium transition-all duration-300 ${isActive('/dashboard') ? 'text-primary border-b-2 border-primary pb-1 font-bold' : 'text-on-surface-variant hover:text-primary'}`}>
               Dashboard
@@ -95,7 +97,9 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-surface-container border-t border-white/10 px-4 py-4 space-y-2">
-          <Link to="/jobs" className="flex items-center gap-2 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-all" onClick={() => setMobileOpen(false)}>Find Jobs</Link>
+          {user?.role !== 'EMPLOYER' && (
+            <Link to="/jobs" className="flex items-center gap-2 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-all" onClick={() => setMobileOpen(false)}>Find Jobs</Link>
+          )}
           {isAuthenticated && user?.role === 'JOB_SEEKER' && (
             <Link to="/workspace" className="flex items-center gap-2 px-4 py-3 rounded-xl text-on-surface hover:bg-white/5 transition-all" onClick={() => setMobileOpen(false)}>
               <UserRound className="w-4 h-4" /> Workspace
