@@ -32,8 +32,13 @@ public class Application {
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.APPLIED;
 
+    private Integer aiMatchScore;
+
     @Column(length = 1000)
     private String resumeUrlUsed;
+
+    @Column(length = 2000)
+    private String employerInstructions;
 
     private boolean savedJob;
 
@@ -99,4 +104,10 @@ public class Application {
 
     public LocalDateTime getAppliedAt() { return appliedAt; }
     public void setAppliedAt(LocalDateTime appliedAt) { this.appliedAt = appliedAt; }
+
+    public Integer getAiMatchScore() { return aiMatchScore; }
+    public void setAiMatchScore(Integer aiMatchScore) { this.aiMatchScore = aiMatchScore; }
+
+    public String getEmployerInstructions() { return employerInstructions; }
+    public void setEmployerInstructions(String employerInstructions) { this.employerInstructions = employerInstructions; }
 }

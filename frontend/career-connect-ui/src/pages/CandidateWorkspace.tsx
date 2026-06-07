@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CheckCircle2, FileText, MessageSquare, Save, Send, Upload, UserCircle2, XCircle, Building2, Trash2, Camera } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FileText, MessageSquare, Save, Send, Upload, UserCircle2, XCircle, Building2, Trash2, Camera, Bell } from 'lucide-react';
 import { fetchChatMessages, getProfile, getUserApplications, saveProfile, scheduleInterview, sendChatMessage, uploadCv, deleteCv, uploadProfilePicture, withdrawApplication, getJobById, API_BASE_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 
@@ -72,7 +72,7 @@ const CandidateWorkspace = () => {
         })
       );
       enrichedApps.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
-      setApplications(enrichedApps);
+      setApplications(enrichedApps.filter(app => app.status !== 'WITHDRAWN'));
     }).catch(() => setApplications([]));
     fetchChatMessages(user.userId, user.token).then(setMessages).catch(() => setMessages([]));
     getProfile(user.userId, user.token)
@@ -192,14 +192,35 @@ const CandidateWorkspace = () => {
 
   const withdraw = async (id: string) => {
     if (!user) return;
-    const updated = await withdrawApplication(id, user.token);
-    setApplications((items) => items.map((item) => item.id === id ? updated : item));
+    await withdrawApplication(id, user.token);
+    setApplications((items) => items.filter((item) => item.id !== id));
   };
+
+  const selectedApps = applications.filter(app => app.status === 'SELECTED' && app.employerInstructions);
 
   return (
     <div className="min-h-screen pt-24 pb-10 px-4 relative overflow-hidden">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_380px] gap-6 relative z-10">
         <main className="space-y-6">
+          {selectedApps.length > 0 && (
+            <div className="glass-card rounded-3xl p-6 bg-green-400/5 border border-green-400/20">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-green-400/20 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-green-400 animate-pulse" />
+                </div>
+                <h2 className="text-lg font-bold text-green-400">You have new notifications!</h2>
+              </div>
+              <div className="space-y-3">
+                {selectedApps.map(app => (
+                  <div key={app.id} className="p-4 rounded-xl bg-surface border border-white/5 shadow-lg">
+                    <p className="text-sm font-semibold text-on-surface mb-1">Congratulations! You've been selected for <span className="text-primary">{app.jobTitle}</span> at {app.companyName}.</p>
+                    <p className="text-xs text-on-surface-variant italic">"{app.employerInstructions}"</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <section className="glass-card rounded-3xl p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-5">
@@ -350,9 +371,10 @@ const CandidateWorkspace = () => {
             <h2 className="text-xl font-bold text-on-surface">Application Tracker</h2>
             <div className="mt-6 divide-y divide-white/10">
               {applications.length === 0 ? <p className="py-8 text-sm text-on-surface-variant text-center">No applications yet. Apply to jobs to see live status here.</p> : applications.map((app) => (
-                <div key={app.id} className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-surface border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                <div key={app.id} className="py-5 group">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-surface border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
                       {app.companyLogoUrl ? (
                         <img src={app.companyLogoUrl.startsWith('http') ? app.companyLogoUrl : `${API_BASE_URL.replace('/api/v1', '')}${app.companyLogoUrl}`} alt="Logo" className="w-full h-full object-cover" />
                       ) : (
@@ -365,6 +387,7 @@ const CandidateWorkspace = () => {
                       
                       <div className="flex flex-wrap items-center gap-3 mt-2">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                          app.status === 'SELECTED' ? 'bg-green-400/20 text-green-400 border-green-400/30 shadow-[0_0_10px_rgba(74,222,128,0.2)]' :
                           app.status === 'SHORTLISTED' || app.status === 'INTERVIEW_SCHEDULED' ? 'bg-green-400/10 text-green-400 border-green-400/20' :
                           app.status === 'REJECTED' ? 'bg-error/10 text-error border-error/20' :
                           app.status === 'UNDER_REVIEW' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' :
@@ -383,14 +406,14 @@ const CandidateWorkspace = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4 sm:flex-col sm:items-end sm:justify-center">
-                    {app.status !== 'WITHDRAWN' && app.status !== 'REJECTED' && (
+                    {app.status !== 'WITHDRAWN' && app.status !== 'REJECTED' && app.aiMatchScore != null && (
                       <div className="flex flex-col items-start sm:items-end w-full sm:w-auto">
-                        <span className="text-xs font-semibold text-on-surface-variant mb-1.5 flex items-center gap-1">AI Match Prediction <span className="px-1.5 py-0.5 rounded text-[9px] bg-tertiary/20 text-tertiary border border-tertiary/30">MOCK</span></span>
+                        <span className="text-xs font-semibold text-on-surface-variant mb-1.5 flex items-center gap-1">AI Match Prediction</span>
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-2 bg-surface-container rounded-full overflow-hidden">
-                            <div className="h-full bg-tertiary rounded-full shadow-[0_0_8px_rgba(202,152,255,0.6)]" style={{ width: `${70 + (app.id.charCodeAt(0) % 25)}%` }} />
+                            <div className="h-full bg-tertiary rounded-full shadow-[0_0_8px_rgba(202,152,255,0.6)]" style={{ width: `${app.aiMatchScore}%` }} />
                           </div>
-                          <span className="text-xs font-bold text-tertiary">{70 + (app.id.charCodeAt(0) % 25)}%</span>
+                          <span className="text-xs font-bold text-tertiary">{app.aiMatchScore}%</span>
                         </div>
                       </div>
                     )}
@@ -401,6 +424,14 @@ const CandidateWorkspace = () => {
                       </button>
                     )}
                   </div>
+                </div>
+                {/* Employer Instructions Box */}
+                {app.employerInstructions && (
+                  <div className="mt-4 px-5 py-4 bg-surface-container-low border border-white/5 rounded-xl">
+                    <p className="text-xs font-semibold text-primary mb-1">Message from Employer</p>
+                    <p className="text-sm text-on-surface-variant italic">"{app.employerInstructions}"</p>
+                  </div>
+                )}
                 </div>
               ))}
             </div>

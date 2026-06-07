@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building2, PlusCircle, Briefcase, Users, TrendingUp, CheckCircle, X, DollarSign, MapPin, FileText, Eye, Download, Mail, Phone, Home, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL, getCompanyJobs, getJobApplications, getCompanyByOwner, uploadJobPoster, updateJob, deleteJob } from '../api';
+import { API_BASE_URL, getCompanyJobs, getJobApplications, getCompanyByOwner, uploadJobPoster, updateJob, deleteJob, updateApplicationStatus, deleteApplication } from '../api';
 import CompanyProfile from '../components/CompanyProfile';
 const emptyForm = { title: '', description: '', requirements: '', location: '', jobType: 'FULL_TIME', salaryMin: '', salaryMax: '' };
 
@@ -37,6 +37,12 @@ const EmployerDashboard = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'profile'>('overview');
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
+
+  // Status update state
+  const [showSelectModal, setShowSelectModal] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [employerInstructions, setEmployerInstructions] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Dashboard Data State
   const [jobsCount, setJobsCount] = useState(0);
@@ -180,6 +186,41 @@ const EmployerDashboard = () => {
     setForm(emptyForm);
     setPosterFile(null);
     setShowModal(true);
+  };
+
+  const handleStatusChange = async (app: any, status: string) => {
+    if (status === 'SELECTED') {
+      setSelectedApp(app);
+      setEmployerInstructions('');
+      setShowSelectModal(true);
+      return;
+    }
+    await executeStatusUpdate(app.id, status, '');
+  };
+
+  const executeStatusUpdate = async (appId: string, status: string, instructions: string) => {
+    setStatusUpdating(true);
+    try {
+      await updateApplicationStatus(appId, status, instructions, user!.email, user!.token);
+      setSuccess(`Application marked as ${status}`);
+      setShowSelectModal(false);
+      fetchDashboardData();
+    } catch {
+      setError('Failed to update application status.');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleDeleteApplication = async (appId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this application? It will be removed from your view and the candidate's view.")) return;
+    try {
+      await deleteApplication(appId, user!.token);
+      setSuccess("Application deleted successfully.");
+      fetchDashboardData();
+    } catch {
+      setError("Failed to delete application.");
+    }
   };
 
   const shortlistedCount = applicants.filter(a => a.status === 'SHORTLISTED' || a.status === 'INTERVIEW_SCHEDULED').length;
@@ -372,6 +413,24 @@ const EmployerDashboard = () => {
                         <span className="text-xs text-on-surface-variant">{new Date(a.appliedAt).toLocaleDateString()}</span>
                       </div>
                     </div>
+                    
+                    {/* Action Bar */}
+                    <div className="bg-surface-container/50 px-6 py-3 border-b border-white/5 flex items-center justify-between gap-3">
+                      <button onClick={() => handleDeleteApplication(a.id)} className="text-xs text-on-surface-variant hover:text-error transition-colors p-1.5 rounded-lg hover:bg-white/5" title="Delete Application">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-3">
+                        {a.status !== 'SHORTLISTED' && a.status !== 'SELECTED' && (
+                          <button onClick={() => handleStatusChange(a, 'SHORTLISTED')} className="text-xs font-semibold px-4 py-1.5 rounded-lg border border-primary/20 text-primary hover:bg-primary/10 transition-colors">Shortlist</button>
+                        )}
+                        {a.status !== 'REJECTED' && (
+                          <button onClick={() => handleStatusChange(a, 'REJECTED')} className="text-xs font-semibold px-4 py-1.5 rounded-lg border border-error/20 text-error hover:bg-error/10 transition-colors">Reject</button>
+                        )}
+                        {a.status !== 'SELECTED' && (
+                          <button onClick={() => handleStatusChange(a, 'SELECTED')} className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-green-400 text-on-primary hover:scale-105 transition-transform shadow-[0_0_10px_rgba(74,222,128,0.2)]">Select Candidate</button>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Card Body */}
                     <div className="p-6 space-y-5">
@@ -560,6 +619,35 @@ const EmployerDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Select Candidate Modal */}
+      {showSelectModal && (
+        <div className="fixed inset-0 bg-surface-dim/80 backdrop-blur-md z-50 flex items-center justify-center px-4 py-6">
+          <div className="glass-card rounded-3xl shadow-2xl w-full max-w-lg p-6 animate-slide-up">
+            <h2 className="text-xl font-bold text-on-surface mb-2">Select Candidate</h2>
+            <p className="text-sm text-on-surface-variant mb-4">You are selecting <span className="font-semibold text-primary">{selectedApp?.applicantName || 'this candidate'}</span>. They will be notified via email and on their dashboard.</p>
+            
+            <label className="text-sm font-medium text-on-surface-variant mb-2 block">Instructions / Message for the Candidate</label>
+            <textarea
+              value={employerInstructions}
+              onChange={(e) => setEmployerInstructions(e.target.value)}
+              placeholder="e.g. Please join us for a walk-in interview on Monday at 10 AM..."
+              rows={4}
+              className="w-full px-4 py-3 text-sm bg-surface border border-white/10 text-on-surface rounded-xl focus:outline-none focus:border-primary resize-none transition-colors mb-6"
+            />
+            
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowSelectModal(false)} className="flex-1 py-3 text-sm font-semibold text-on-surface-variant glass hover:bg-white/5 rounded-xl transition-colors">Cancel</button>
+              <button
+                onClick={() => executeStatusUpdate(selectedApp.id, 'SELECTED', employerInstructions)}
+                disabled={statusUpdating}
+                className="flex-1 flex items-center justify-center py-3 text-sm font-semibold text-on-primary bg-green-400 rounded-xl hover:scale-105 transition-transform duration-300 disabled:opacity-60 shadow-[0_0_15px_rgba(74,222,128,0.4)]"
+              >
+                {statusUpdating ? 'Sending...' : 'Confirm & Notify'}
+              </button>
+            </div>
           </div>
         </div>
       )}

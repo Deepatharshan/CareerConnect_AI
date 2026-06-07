@@ -8,6 +8,17 @@ spring:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     consumer:
       group-id: notification_group
+  mail:
+    host: smtp.mailtrap.io
+    port: 2525
+    username: your_mailtrap_username
+    password: your_mailtrap_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 eureka:
   client:

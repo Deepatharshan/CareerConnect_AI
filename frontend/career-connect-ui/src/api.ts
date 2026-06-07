@@ -193,6 +193,32 @@ export const withdrawApplication = async (applicationId: string, token: string) 
   return response.json();
 };
 
+export const updateApplicationStatus = async (applicationId: string, status: string, employerInstructions: string, employerEmail: string, token: string) => {
+  const payload: any = { status };
+  if (employerInstructions) {
+    payload.employerInstructions = employerInstructions;
+  }
+  if (employerEmail) {
+    payload.employerEmail = employerEmail;
+  }
+  const response = await fetch(`${API_BASE_URL}/applications/${applicationId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error('Failed to update application status');
+  return response.json();
+};
+
+export const deleteApplication = async (applicationId: string, token: string) => {
+  const response = await fetch(`${API_BASE_URL}/applications/${applicationId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Failed to delete application');
+  return response.text();
+};
+
 export const analyzeCv = async (cvText: string, targetJobId?: string) => {
   const response = await fetch(`${API_BASE_URL}/ai/analyze`, {
     method: 'POST',
@@ -214,6 +240,19 @@ export const analyzeCvFile = async (file: File, targetJobId?: string) => {
     body: formData,
   });
   if (!response.ok) throw new Error('Failed to analyze CV file');
+  return response.json();
+};
+
+export const matchJobsWithCv = async (files: File[], jobs: any[]) => {
+  const formData = new FormData();
+  files.forEach(file => formData.append('files', file));
+  formData.append('jobsJson', JSON.stringify(jobs));
+
+  const response = await fetch(`${API_BASE_URL}/ai/cv/match-jobs`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) throw new Error('Failed to match jobs with CV');
   return response.json();
 };
 

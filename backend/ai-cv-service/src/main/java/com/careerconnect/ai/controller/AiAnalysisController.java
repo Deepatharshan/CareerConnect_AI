@@ -1,6 +1,7 @@
 package com.careerconnect.ai.controller;
 
 import com.careerconnect.ai.dto.CvAnalysisResult;
+import com.careerconnect.ai.dto.JobMatchResult;
 import com.careerconnect.ai.service.LlmAnalysisService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +10,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/ai")
@@ -37,6 +39,25 @@ public class AiAnalysisController {
             CvAnalysisResult result = llmAnalysisService.analyzeCvAgainstJob(extractedText, targetJobId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/cv/match-jobs")
+    public ResponseEntity<List<JobMatchResult>> matchCvAgainstJobs(
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam("jobsJson") String jobsJson) {
+        try {
+            StringBuilder combinedText = new StringBuilder();
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    combinedText.append(extractTextFromPdf(file)).append("\n\n");
+                }
+            }
+            List<JobMatchResult> results = llmAnalysisService.matchCvAgainstJobs(combinedText.toString(), jobsJson);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }

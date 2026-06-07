@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Briefcase, Clock, DollarSign, Sparkles, ChevronRight, Building2, Bookmark, CheckCircle, X, Mail, Phone, Home, UserCircle2, FileText } from 'lucide-react';
-import { API_BASE_URL, fetchOpenJobs, applyForJob, getProfile, uploadCv } from '../api';
+import { API_BASE_URL, fetchOpenJobs, applyForJob, getProfile, uploadCv, matchJobsWithCv } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 interface Job {
@@ -70,6 +70,11 @@ const JobFeed = () => {
   const [cvUploading, setCvUploading] = useState(false);
   const [selectedCvName, setSelectedCvName] = useState('');
   const [applicationError, setApplicationError] = useState('');
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [profileCvs, setProfileCvs] = useState<any[]>([]);
+  const [selectedCvForAi, setSelectedCvForAi] = useState<string>('');
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiScores, setAiScores] = useState<Record<string, {score: number, reasoning: string}>>({});
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -78,6 +83,59 @@ const JobFeed = () => {
       .catch(() => setJobs(placeholderJobs))
       .finally(() => setLoading(false));
   }, []);
+
+  const openAiModal = async () => {
+    if (!user) return;
+    setAiModalOpen(true);
+    setSelectedCvForAi('');
+    try {
+      const profile = await getProfile(user.userId, user.token);
+      if (profile && profile.cvs) {
+        setProfileCvs(profile.cvs);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAiSuggest = async () => {
+    if (!user || !selectedCvForAi || jobs.length === 0) return;
+    setAiProcessing(true);
+    
+    try {
+      const cvsToSend = selectedCvForAi === 'ALL' 
+        ? profileCvs 
+        : profileCvs.filter(cv => cv.id === selectedCvForAi);
+        
+      const files: File[] = [];
+      for (const cv of cvsToSend) {
+        const cvUrl = cv.url.startsWith('http') ? cv.url : `${API_BASE_URL.replace('/api/v1', '')}${cv.url}`;
+        const res = await fetch(cvUrl);
+        const blob = await res.blob();
+        files.push(new File([blob], cv.name, { type: blob.type }));
+      }
+      
+      const simplifiedJobs = jobs.map(j => ({
+        id: j.id,
+        title: j.title,
+        description: j.description.substring(0, 500)
+      }));
+      
+      const results = await matchJobsWithCv(files, simplifiedJobs);
+      
+      const scoresMap: Record<string, {score: number, reasoning: string}> = {};
+      results.forEach((r: any) => {
+        scoresMap[r.jobId] = { score: r.score, reasoning: r.reasoning };
+      });
+      setAiScores(scoresMap);
+      setAiModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to analyze jobs. Please try again.');
+    } finally {
+      setAiProcessing(false);
+    }
+  };
 
   const openApplyForm = async (job: Job) => {
     if (!user) return;
@@ -94,6 +152,7 @@ const JobFeed = () => {
     try {
       const profile = await getProfile(user.userId, user.token);
       if (profile) {
+        if (profile.cvs) setProfileCvs(profile.cvs);
         const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
         setApplicationForm(current => ({
           ...current,
@@ -101,8 +160,11 @@ const JobFeed = () => {
           applicantCurrentStatus: profile.currentJobStatus || '',
           applicantPhone: profile.phone || '',
           applicantAddress: profile.address || '',
-          resumeUrlUsed: profile.cvUrl || '',
+          resumeUrlUsed: profile.cvs && profile.cvs.length > 0 ? profile.cvs[0].url : '',
         }));
+        if (profile.cvs && profile.cvs.length > 0) {
+          setSelectedCvName(profile.cvs[0].name);
+        }
       }
     } catch (error) {
       console.error('Failed to load profile:', error);
@@ -130,7 +192,9 @@ const JobFeed = () => {
     setApplicationError('');
     try {
       const saved = await uploadCv(user.userId, file, user.token);
-      updateApplicationField('resumeUrlUsed', saved.cvUrl || '');
+      const url = saved.url || saved.cvUrl || '';
+      updateApplicationField('resumeUrlUsed', url);
+      setProfileCvs(prev => [...prev.filter(c => c.id !== saved.id), saved]);
     } catch {
       setApplicationError('Could not upload CV. Check that the profile service is running.');
     } finally {
@@ -177,6 +241,7 @@ const JobFeed = () => {
         expectedSalaryMin: applicationForm.expectedSalaryMin ? Number(applicationForm.expectedSalaryMin) : null,
         expectedSalaryMax: applicationForm.expectedSalaryMax ? Number(applicationForm.expectedSalaryMax) : null,
         applicantDescription: applicationForm.applicantDescription.trim(),
+        aiMatchScore: aiScores[selectedJob.id] ? aiScores[selectedJob.id].score : null,
       });
       setAppliedSet(prev => new Set(prev).add(selectedJob.id));
       setSelectedJob(null);
@@ -188,11 +253,17 @@ const JobFeed = () => {
     }
   };
 
-  const filtered = jobs.filter(j => {
+  let filtered = jobs.filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.location?.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'ALL' || j.jobType === filterType;
     return matchSearch && matchType;
   });
+
+  if (Object.keys(aiScores).length > 0) {
+    filtered = filtered
+      .filter(j => (aiScores[j.id]?.score || 0) >= 60)
+      .sort((a, b) => (aiScores[b.id]?.score || 0) - (aiScores[a.id]?.score || 0));
+  }
 
   const toggleSave = (id: string) => {
     setSaved(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -241,6 +312,11 @@ const JobFeed = () => {
               <option value="CONTRACT" className="bg-surface text-on-surface">Contract</option>
               <option value="INTERNSHIP" className="bg-surface text-on-surface">Internship</option>
             </select>
+            {isAuthenticated && (
+              <button onClick={openAiModal} className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary border border-primary/30 rounded-xl hover:bg-primary/20 transition-all font-semibold text-sm whitespace-nowrap hover:shadow-[0_0_15px_rgba(137,206,255,0.2)]">
+                <Sparkles className="w-4 h-4" /> AI Suggestion
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -273,6 +349,11 @@ const JobFeed = () => {
                       <h2 className="text-base font-bold text-on-surface group-hover:text-primary transition-colors truncate">{job.title}</h2>
                       <p className="text-sm text-on-surface-variant mt-0.5">{job.companyName || job.companyId || 'Company'}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {aiScores[job.id] && (
+                          <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-primary/20 text-purple-300 border border-purple-500/30" title={aiScores[job.id].reasoning}>
+                            <Sparkles className="w-3 h-3 text-purple-400" /> {aiScores[job.id].score}% Match
+                          </span>
+                        )}
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${jobTypeBadge[job.jobType] || 'bg-surface-container text-on-surface-variant border-white/10'}`}>
                           {job.jobType?.replace('_', ' ') || 'Full Time'}
                         </span>
@@ -419,32 +500,50 @@ const JobFeed = () => {
                     </div>
                   </label>
 
-                  <div className="rounded-lg border border-white/10 bg-surface-container p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="rounded-lg border border-white/10 bg-surface-container p-4 flex flex-col gap-3">
+                    <p className="text-sm font-semibold text-on-surface">Select or Upload CV *</p>
+                    
+                    {profileCvs.length > 0 && (
+                      <div className="space-y-2 mb-2">
+                        {profileCvs.map(cv => (
+                          <label key={cv.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-surface cursor-pointer hover:border-primary/50 transition-colors">
+                            <input 
+                              type="radio" 
+                              name="apply_cv_select" 
+                              value={cv.url} 
+                              checked={applicationForm.resumeUrlUsed === cv.url} 
+                              onChange={() => {
+                                updateApplicationField('resumeUrlUsed', cv.url);
+                                setSelectedCvName(cv.name);
+                              }} 
+                              className="text-primary focus:ring-primary h-4 w-4 bg-surface border-white/20" 
+                            />
+                            <span className="text-sm font-medium text-on-surface truncate">{cv.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3 min-w-0 mt-2 border-t border-white/10 pt-4">
                       <div className="w-10 h-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 border border-primary/30">
                         <FileText className="w-5 h-5" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-on-surface">CV *</p>
-                        {applicationForm.resumeUrlUsed ? (
-                          <a href={cvHref} target="_blank" rel="noreferrer" className="text-xs text-primary hover:text-primary-fixed truncate block">{selectedCvName || applicationForm.resumeUrlUsed.split('/').pop()}</a>
-                        ) : (
-                          <p className="text-xs text-on-surface-variant">{selectedCvName || 'Upload a PDF, DOC, or DOCX file'}</p>
-                        )}
-                        {cvUploading && <p className="text-xs text-primary mt-1">Uploading CV...</p>}
+                      <div className="min-w-[180px] flex-1">
+                        <label htmlFor="application-cv-input" className="block text-xs font-semibold text-on-surface-variant mb-1">Upload a New CV</label>
+                        <input
+                          id="application-cv-input"
+                          type="file"
+                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          disabled={cvUploading}
+                          onChange={event => handleCvChange(event.target.files?.[0])}
+                          className="block w-full cursor-pointer rounded-lg border border-white/10 bg-surface text-xs text-on-surface-variant file:mr-3 file:border-0 file:bg-primary/20 file:px-3 file:py-2.5 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/30 disabled:cursor-wait disabled:opacity-60"
+                        />
                       </div>
                     </div>
-                    <div className="min-w-[180px]">
-                      <label htmlFor="application-cv-input" className="sr-only">Choose CV</label>
-                      <input
-                        id="application-cv-input"
-                        type="file"
-                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        disabled={cvUploading}
-                        onChange={event => handleCvChange(event.target.files?.[0])}
-                        className="block w-full cursor-pointer rounded-lg border border-white/10 bg-surface text-xs text-on-surface-variant file:mr-3 file:border-0 file:bg-primary/20 file:px-3 file:py-2.5 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/30 disabled:cursor-wait disabled:opacity-60"
-                      />
-                    </div>
+                    {cvUploading && <p className="text-xs text-primary text-center">Uploading CV...</p>}
+                    {applicationForm.resumeUrlUsed && (
+                       <a href={cvHref} target="_blank" rel="noreferrer" className="text-xs text-primary hover:text-primary-fixed block mt-2 text-center underline">Preview selected CV ({selectedCvName || 'File'})</a>
+                    )}
                   </div>
                 </>
               )}
@@ -458,6 +557,55 @@ const JobFeed = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {aiModalOpen && (
+        <div className="fixed inset-0 bg-surface-dim/80 backdrop-blur-md z-50 flex items-center justify-center px-4 py-6">
+          <div className="glass-card rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-on-surface flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> AI Job Suggestion
+              </h2>
+              <button onClick={() => setAiModalOpen(false)} disabled={aiProcessing} className="p-2 rounded-xl hover:bg-white/5 text-on-surface-variant transition-colors disabled:opacity-50">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {aiProcessing ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <p className="text-sm font-medium text-primary animate-pulse">Gemini AI is analyzing your CV...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-on-surface-variant">Select a CV to analyze against open jobs and find your best matches.</p>
+                {profileCvs.length === 0 ? (
+                  <div className="bg-surface-container rounded-xl p-4 text-center">
+                    <p className="text-sm text-on-surface-variant">You don't have any CVs uploaded yet. Please upload a CV in your profile first.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2 max-h-[40vh] overflow-y-auto no-scrollbar">
+                      <label className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-surface-container cursor-pointer hover:border-primary/50 transition-colors">
+                        <input type="radio" name="ai_cv_select" value="ALL" checked={selectedCvForAi === 'ALL'} onChange={() => setSelectedCvForAi('ALL')} className="text-primary focus:ring-primary h-4 w-4 bg-surface border-white/20" />
+                        <span className="text-sm font-medium text-on-surface">All CVs (Combined Analysis)</span>
+                      </label>
+                      {profileCvs.map(cv => (
+                        <label key={cv.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-surface-container cursor-pointer hover:border-primary/50 transition-colors">
+                          <input type="radio" name="ai_cv_select" value={cv.id} checked={selectedCvForAi === cv.id} onChange={() => setSelectedCvForAi(cv.id)} className="text-primary focus:ring-primary h-4 w-4 bg-surface border-white/20" />
+                          <span className="text-sm font-medium text-on-surface truncate">{cv.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <button onClick={handleAiSuggest} disabled={!selectedCvForAi} className="w-full mt-4 flex items-center justify-center gap-2 py-3 text-sm font-semibold text-on-primary bg-primary rounded-xl hover:scale-105 transition-transform duration-300 disabled:opacity-60 disabled:hover:scale-100 hover:shadow-[0_0_15px_rgba(137,206,255,0.4)]">
+                      <Sparkles className="w-4 h-4" /> Analyze with Gemini AI
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

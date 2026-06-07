@@ -6,15 +6,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import org.springframework.kafka.core.KafkaTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/v1/applications")
 public class ApplicationController {
 
     private final ApplicationRepository repository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
-    public ApplicationController(ApplicationRepository repository) {
+    public ApplicationController(ApplicationRepository repository, KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/apply/{jobId}")
@@ -47,9 +54,30 @@ public class ApplicationController {
             @PathVariable("appId") String appId,
             @RequestBody Map<String, String> payload) {
         return repository.findById(appId).map(app -> {
-            app.setStatus(Application.ApplicationStatus.valueOf(
-                    payload.get("status").toUpperCase()));
-            return ResponseEntity.ok(repository.save(app));
+            Application.ApplicationStatus newStatus = Application.ApplicationStatus.valueOf(payload.get("status").toUpperCase());
+            app.setStatus(newStatus);
+            if (payload.containsKey("employerInstructions")) {
+                app.setEmployerInstructions(payload.get("employerInstructions"));
+            }
+            Application saved = repository.save(app);
+            
+            if (newStatus == Application.ApplicationStatus.SELECTED && app.getApplicantEmail() != null) {
+                try {
+                    Map<String, String> eventPayload = new HashMap<>();
+                    eventPayload.put("applicantEmail", app.getApplicantEmail());
+                    eventPayload.put("applicantName", app.getApplicantName() != null ? app.getApplicantName() : "Candidate");
+                    eventPayload.put("jobTitle", app.getJobId()); // Ideally fetch job title, but we send Job ID for now
+                    eventPayload.put("employerInstructions", app.getEmployerInstructions() != null ? app.getEmployerInstructions() : "");
+                    if (payload.containsKey("employerEmail")) {
+                        eventPayload.put("employerEmail", payload.get("employerEmail"));
+                    }
+                    
+                    kafkaTemplate.send("application-selected-topic", objectMapper.writeValueAsString(eventPayload));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return ResponseEntity.ok(saved);
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -67,5 +95,14 @@ public class ApplicationController {
             app.setStatus(Application.ApplicationStatus.WITHDRAWN);
             return ResponseEntity.ok(repository.save(app));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{appId}")
+    public ResponseEntity<Void> deleteApplication(@PathVariable String appId) {
+        if (repository.existsById(appId)) {
+            repository.deleteById(appId);
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }
