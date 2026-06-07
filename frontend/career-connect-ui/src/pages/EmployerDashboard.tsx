@@ -72,7 +72,8 @@ const EmployerDashboard = () => {
         // Attach job title to the application for display
         const appsWithJobTitle = apps.map((app: any) => ({
           ...app,
-          jobTitle: job.title
+          jobTitle: job.title,
+          companyName: job.companyName
         }));
         allApplicants = [...allApplicants, ...appsWithJobTitle];
       }
@@ -195,13 +196,13 @@ const EmployerDashboard = () => {
       setShowSelectModal(true);
       return;
     }
-    await executeStatusUpdate(app.id, status, '');
+    await executeStatusUpdate(app.id, status, '', app.jobTitle || 'Unknown Job', app.companyName || 'Company Name Pending');
   };
 
-  const executeStatusUpdate = async (appId: string, status: string, instructions: string) => {
+  const executeStatusUpdate = async (appId: string, status: string, instructions: string, jobTitle: string, companyName: string) => {
     setStatusUpdating(true);
     try {
-      await updateApplicationStatus(appId, status, instructions, user!.email, user!.token);
+      await updateApplicationStatus(appId, status, instructions, user!.email, jobTitle, companyName, user!.token);
       setSuccess(`Application marked as ${status}`);
       setShowSelectModal(false);
       fetchDashboardData();
@@ -641,7 +642,11 @@ const EmployerDashboard = () => {
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowSelectModal(false)} className="flex-1 py-3 text-sm font-semibold text-on-surface-variant glass hover:bg-white/5 rounded-xl transition-colors">Cancel</button>
               <button
-                onClick={() => executeStatusUpdate(selectedApp.id, 'SELECTED', employerInstructions)}
+                onClick={() => {
+                  if (selectedApp) {
+                    executeStatusUpdate(selectedApp.id, 'SELECTED', employerInstructions, selectedApp.jobTitle || 'Unknown Job', selectedApp.companyName || 'Company Name Pending');
+                  }
+                }}
                 disabled={statusUpdating}
                 className="flex-1 flex items-center justify-center py-3 text-sm font-semibold text-on-primary bg-green-400 rounded-xl hover:scale-105 transition-transform duration-300 disabled:opacity-60 shadow-[0_0_15px_rgba(74,222,128,0.4)]"
               >

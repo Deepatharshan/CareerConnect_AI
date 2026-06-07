@@ -9,10 +9,10 @@ spring:
     consumer:
       group-id: notification_group
   mail:
-    host: smtp.mailtrap.io
-    port: 2525
-    username: your_mailtrap_username
-    password: your_mailtrap_password
+    host: smtp.gmail.com
+    port: 587
+    username: panchdeepan147@gmail.com
+    password: mddp wcqm bmcb fpqh
     properties:
       mail:
         smtp:

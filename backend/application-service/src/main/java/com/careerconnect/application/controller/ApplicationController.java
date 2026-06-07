@@ -66,7 +66,19 @@ public class ApplicationController {
                     Map<String, String> eventPayload = new HashMap<>();
                     eventPayload.put("applicantEmail", app.getApplicantEmail());
                     eventPayload.put("applicantName", app.getApplicantName() != null ? app.getApplicantName() : "Candidate");
-                    eventPayload.put("jobTitle", app.getJobId()); // Ideally fetch job title, but we send Job ID for now
+                    
+                    if (payload.containsKey("jobTitle")) {
+                        eventPayload.put("jobTitle", payload.get("jobTitle"));
+                    } else {
+                        eventPayload.put("jobTitle", app.getJobId());
+                    }
+
+                    if (payload.containsKey("companyName")) {
+                        eventPayload.put("companyName", payload.get("companyName"));
+                    } else {
+                        eventPayload.put("companyName", "The Employer");
+                    }
+
                     eventPayload.put("employerInstructions", app.getEmployerInstructions() != null ? app.getEmployerInstructions() : "");
                     if (payload.containsKey("employerEmail")) {
                         eventPayload.put("employerEmail", payload.get("employerEmail"));

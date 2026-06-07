@@ -193,13 +193,19 @@ export const withdrawApplication = async (applicationId: string, token: string) 
   return response.json();
 };
 
-export const updateApplicationStatus = async (applicationId: string, status: string, employerInstructions: string, employerEmail: string, token: string) => {
+export const updateApplicationStatus = async (applicationId: string, status: string, employerInstructions: string, employerEmail: string, jobTitle: string, companyName: string, token: string) => {
   const payload: any = { status };
   if (employerInstructions) {
     payload.employerInstructions = employerInstructions;
   }
   if (employerEmail) {
     payload.employerEmail = employerEmail;
+  }
+  if (jobTitle) {
+    payload.jobTitle = jobTitle;
+  }
+  if (companyName) {
+    payload.companyName = companyName;
   }
   const response = await fetch(`${API_BASE_URL}/applications/${applicationId}/status`, {
     method: 'PATCH',

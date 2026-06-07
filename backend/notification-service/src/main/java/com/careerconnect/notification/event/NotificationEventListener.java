@@ -31,14 +31,25 @@ public class NotificationEventListener {
             String name = payload.get("applicantName");
             String instructions = payload.get("employerInstructions");
             String employerEmail = payload.get("employerEmail");
+            String jobTitle = payload.get("jobTitle") != null ? payload.get("jobTitle") : "the position";
+            String companyName = payload.get("companyName") != null ? payload.get("companyName") : "our company";
             
             if (email != null) {
-                String subject = "Congratulations! You have been selected";
-                String text = "Dear " + name + ",\n\n" +
-                              "Congratulations! Your application has been selected.\n\n" +
-                              "Message from the Employer:\n" + instructions + "\n\n" +
-                              "Best Regards,\nCareerConnect Team";
-                emailService.sendSimpleMessage(email, subject, text, employerEmail);
+                String subject = "Congratulations! You have been selected for " + jobTitle;
+                
+                String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;\">" +
+                    "<h2 style=\"color: #4F46E5;\">Congratulations, " + name + "!</h2>" +
+                    "<p style=\"font-size: 16px; line-height: 1.5;\">We are thrilled to inform you that your application for the <strong>" + jobTitle + "</strong> position at <strong>" + companyName + "</strong> has been successful, and you have been selected to move forward!</p>" +
+                    "<div style=\"background-color: #F3F4F6; border-left: 4px solid #4F46E5; padding: 15px; margin: 20px 0; border-radius: 4px;\">" +
+                    "<h3 style=\"margin-top: 0; color: #111827; font-size: 16px;\">Message from the Employer:</h3>" +
+                    "<p style=\"font-style: italic; margin-bottom: 0;\">\"" + instructions + "\"</p>" +
+                    "</div>" +
+                    "<p style=\"font-size: 14px; color: #6B7280;\">If you have any questions, you can reply directly to this email to contact the recruiter.</p>" +
+                    "<hr style=\"border: none; border-top: 1px solid #E5E7EB; margin: 20px 0;\" />" +
+                    "<p style=\"font-size: 12px; color: #9CA3AF;\">Best Regards,<br><strong>CareerConnect Team</strong></p>" +
+                    "</div>";
+                
+                emailService.sendHtmlMessage(email, subject, htmlContent, employerEmail);
             }
         } catch (Exception e) {
             e.printStackTrace();
