@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: career-connect
+    service: auth
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: auth
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: auth
+    spec:
+      containers:
+      - name: auth-service
+        image: careerconnect/auth-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:mysql://mysql-svc:3306/career_connect_db"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-svc:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          value: "http://discovery-server-svc:8761/eureka/"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-service
+  labels:
+    app: career-connect
+    service: job
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: job
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: job
+    spec:
+      containers:
+      - name: job-service
+        image: careerconnect/job-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:mysql://mysql-svc:3306/career_connect_db"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          value: "http://discovery-server-svc:8761/eureka/"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: career-connect
+    service: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: api-gateway
+  template:
+    metadata:
+      labels:
+        app: career-connect
+        service: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: careerconnect/api-gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          value: "http://discovery-server-svc:8761/eureka/"
