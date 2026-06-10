@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, PlusCircle, Briefcase, Users, TrendingUp, CheckCircle, X, DollarSign, MapPin, FileText, Eye, Download, Mail, Phone, Home, Edit2, Trash2, Clock, ChevronRight, LayoutDashboard, UserRound } from 'lucide-react';
+import { Building2, PlusCircle, Briefcase, Users, TrendingUp, CheckCircle, X, DollarSign, MapPin, FileText, Eye, Download, Mail, Phone, Home, Edit2, Trash2, Clock, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL, getCompanyJobs, getJobApplications, getCompanyByOwner, uploadJobPoster, updateJob, deleteJob, updateApplicationStatus, deleteApplication } from '../api';

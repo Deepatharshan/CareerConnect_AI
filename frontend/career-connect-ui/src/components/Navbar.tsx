@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Briefcase, Sparkles, Menu, X, LogOut, LayoutDashboard, UserRound, ShieldCheck } from 'lucide-react';
+import { Briefcase, Sparkles, Menu, X, LogOut, LayoutDashboard, UserRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {

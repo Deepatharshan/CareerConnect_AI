@@ -58,7 +58,7 @@ const Home = () => {
       <section className="py-32 px-margin-desktop max-w-container-max mx-auto overflow-visible">
         <div className="text-center mb-20 scroll-reveal">
           <h2 className="font-display-lg text-display-lg-mobile md:text-headline-md mb-4">The Future of Job Hunting</h2>
-          <p class="text-on-surface-variant font-body-lg">Precision engineering meets career development.</p>
+          <p className="text-on-surface-variant font-body-lg">Precision engineering meets career development.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
           {/* Card 1 */}
